@@ -21,7 +21,8 @@ disp = st7735.ST7735R(
     width=128,
     height=128,
     x_offset=1, y_offset=3,
-    rotation=90
+    rotation=90,
+    baudrate=24000000
 )
 
 # Create a new image with RGB mode
@@ -51,12 +52,12 @@ text = "Bouncy!"
 text_width, text_height = font.getbbox(text)[2:4]
 
 x, y = 0, 0
-vx, vy = 2, 2  # Adjust speed as desired
+vx, vy = 1, 2  # Adjust speed as desired
+
+frame = Image.new("RGB", (width, height))
+draw = ImageDraw.Draw(frame)
 
 while True:
-    frame = Image.new("RGB", (width, height))
-    draw = ImageDraw.Draw(frame)
-
     # Draw rainbow background
     for row in range(height):
         hue = row / height
