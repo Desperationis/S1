@@ -1,0 +1,1 @@
+sparkfun-qwiic-rv8803==2.0.0
