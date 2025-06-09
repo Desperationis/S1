@@ -1,15 +1,24 @@
-import asyncio
-import signal
-import threading
-from typing import Union
+from PIL import Image, ImageDraw, ImageFont
 from bleak import BleakScanner
-from rich.console import Console
 from rich import inspect
-import numpy as np
+from rich.console import Console
+from typing import Union
+import adafruit_rgb_display.st7735 as st7735
+import asyncio
+import board
+import colorsys
+import digitalio
 import matplotlib.pyplot as plt
 import neurokit2 as nk
+import numpy as np
 import pandas as pd
+import signal
+import threading
+import time
 import warnings
+import qwiic_rv8803
+import sys
+import time
 warnings.filterwarnings("ignore")
 
 from polar_python import (
@@ -25,17 +34,21 @@ console = Console()
 
 exit_event = threading.Event()
 
-
 def handle_exit(signum, frame):
     console.print("[bold red]Received exit signal[/bold red]")
     exit_event.set()
+    exit(1)
 
 
 ecg_data_list = []
 
+CUR_HEART_RATE = 0
+CUR_HRV = 0
 
 def heartrate_callback(data: HRData):
     print(f"Heart Rate: {int(data.heartrate)}")
+    global CUR_HEART_RATE
+    CUR_HEART_RATE = int(data.heartrate)
     pass
 
 
@@ -82,6 +95,8 @@ def data_callback(data: Union[ECGData, ACCData]):
 
             hrv = nk.hrv(filtered_peaks, sampling_rate=130, silent=True)
             rmssd = hrv["HRV_RMSSD"].iloc[0]
+            global CUR_HRV
+            CUR_HRV = int(rmssd)
             print(f"HRV_RMSSD: {int(rmssd)} ms; ", end="")
             if rmssd is None:
                 print("undefined")
@@ -149,15 +164,106 @@ async def main():
             await asyncio.sleep(1)
 
 
-if __name__ == "__main__":
-    signal.signal(signal.SIGINT, handle_exit)
-    signal.signal(signal.SIGTERM, handle_exit)
+signal.signal(signal.SIGINT, handle_exit)
+signal.signal(signal.SIGTERM, handle_exit)
 
-    loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(main())
-    finally:
-        loop.close()
-        console.print("[bold red]Program exited gracefully[/bold red]")
+import threading
+
+def start_loop(loop):
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+loop = asyncio.new_event_loop()
+loop_thread = threading.Thread(target=start_loop, args=(loop,), daemon=True)
+loop_thread.start()
+asyncio.run_coroutine_threadsafe(main(), loop)
+
+myRTC = qwiic_rv8803.QwiicRV8803()
+if myRTC.is_connected() == False:
+    print("The device isn't connected to the system. Please check your connection", \
+        file=sys.stderr)
+    exit(1)
+myRTC.begin()
+try:
+
+    # Configuration for CS, DC, and RST pins:
+    cs_pin = digitalio.DigitalInOut(board.CE0)
+    dc_pin = digitalio.DigitalInOut(board.D20)
+    reset_pin = digitalio.DigitalInOut(board.D21)
+
+    # Setup SPI bus using hardware SPI:
+    spi = board.SPI()
+
+    # Create the display object:
+    disp = st7735.ST7735R(
+        spi,
+        cs=cs_pin,
+        dc=dc_pin,
+        rst=reset_pin,
+        width=128,
+        height=128,
+        x_offset=1, y_offset=3,
+        rotation=90,
+        baudrate=24000000
+    )
+
+    # Create a new image with RGB mode
+    width = disp.width
+    height = disp.height
+    image = Image.new("RGB", (width, height))
+    draw = ImageDraw.Draw(image)
+
+    # Draw a vertical rainbow gradient
+    for y in range(height):
+        # Calculate color for this row
+        # HSV to RGB conversion for smooth rainbow
+        hue = y / height
+        r, g, b = [int(x * 255) for x in colorsys.hsv_to_rgb(hue, 0.5, 1)]
+        draw.line([(0, y), (width, y)], fill=(r, g, b))
+
+    # Display the image
+    disp.image(image)
+
+    # Assuming disp, width, and height are already defined and initialized
+
+    font = ImageFont.load_default()
+    while True:
+        myRTC.update_time()
+        frame = Image.new("RGB", (width, height))
+        draw = ImageDraw.Draw(frame)
+
+        text = f"HR: {CUR_HEART_RATE} HRV: {CUR_HRV} ms"
+        text_width, text_height = font.getbbox(text)[2:4]
+        x, y = 128/2 - text_width/2, 128/2 - text_height/2
+
+        # Draw the text
+        draw.text((x, y), text, font=font, fill=(255, 255, 255))
+
+        text = myRTC.string_date_usa()
+        text_width, text_height = font.getbbox(text)[2:4]
+        x, y = 128/2 - text_width/2, 128/2 - text_height/2 - 40
+        draw.text((x, y), text, font=font, fill=(255, 255, 255))
+
+        text = myRTC.string_time()
+        text_width, text_height = font.getbbox(text)[2:4]
+        x, y = 128/2 - text_width/2, 128/2 - text_height/2 - 20
+        draw.text((x, y), text, font=font, fill=(255, 255, 255))
+
+
+        # Display the frame
+        disp.image(frame)
+
+
+
+finally:
+    loop.close()
+    console.print("[bold red]Program exited gracefully[/bold red]")
+
+
+
+
+
+
+
 
 

@@ -51,34 +51,15 @@ font = ImageFont.load_default()
 text = "Bouncy!"
 text_width, text_height = font.getbbox(text)[2:4]
 
-x, y = 0, 0
+x, y = 50, 60
 vx, vy = 1, 2  # Adjust speed as desired
 
 frame = Image.new("RGB", (width, height))
 draw = ImageDraw.Draw(frame)
 
 while True:
-    # Draw rainbow background
-    for row in range(height):
-        hue = row / height
-        r, g, b = [int(val * 255) for val in colorsys.hsv_to_rgb(hue, 1, 1)]
-        draw.line([(0, row), (width, row)], fill=(r, g, b))
-
     # Draw the text
     draw.text((x, y), text, font=font, fill=(255, 255, 255))
 
     # Display the frame
     disp.image(frame)
-
-    # Update position
-    x += vx
-    y += vy
-
-    # Bounce off edges
-    if x < 0 or x + text_width > width:
-        vx = -vx
-        x += vx
-    if y < 0 or y + text_height > height:
-        vy = -vy
-        y += vy
-
