@@ -63,3 +63,4 @@ while True:
 
     # Display the frame
     disp.image(frame)
+    break
