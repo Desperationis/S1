@@ -16,9 +16,7 @@ import signal
 import threading
 import time
 import warnings
-import qwiic_rv8803
-import sys
-import time
+from S1 import *
 warnings.filterwarnings("ignore")
 
 from polar_python import (
@@ -178,12 +176,7 @@ loop_thread = threading.Thread(target=start_loop, args=(loop,), daemon=True)
 loop_thread.start()
 asyncio.run_coroutine_threadsafe(main(), loop)
 
-myRTC = qwiic_rv8803.QwiicRV8803()
-if myRTC.is_connected() == False:
-    print("The device isn't connected to the system. Please check your connection", \
-        file=sys.stderr)
-    exit(1)
-myRTC.begin()
+clock = Clock()
 try:
 
     # Configuration for CS, DC, and RST pins:
@@ -228,7 +221,6 @@ try:
 
     font = ImageFont.load_default()
     while True:
-        myRTC.update_time()
         frame = Image.new("RGB", (width, height))
         draw = ImageDraw.Draw(frame)
 
@@ -239,15 +231,16 @@ try:
         # Draw the text
         draw.text((x, y), text, font=font, fill=(255, 255, 255))
 
-        text = myRTC.string_date_usa()
-        text_width, text_height = font.getbbox(text)[2:4]
-        x, y = 128/2 - text_width/2, 128/2 - text_height/2 - 40
-        draw.text((x, y), text, font=font, fill=(255, 255, 255))
 
-        text = myRTC.string_time()
-        text_width, text_height = font.getbbox(text)[2:4]
+        string_date, string_time = clock.get_date_time()
+
+        text_width, text_height = font.getbbox(string_date)[2:4]
+        x, y = 128/2 - text_width/2, 128/2 - text_height/2 - 40
+        draw.text((x, y), string_date, font=font, fill=(255, 255, 255))
+
+        text_width, text_height = font.getbbox(string_time)[2:4]
         x, y = 128/2 - text_width/2, 128/2 - text_height/2 - 20
-        draw.text((x, y), text, font=font, fill=(255, 255, 255))
+        draw.text((x, y), string_time, font=font, fill=(255, 255, 255))
 
 
         # Display the frame

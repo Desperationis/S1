@@ -1,3 +1,3 @@
 #!/bin/bash
 kill -9 $(pgrep python3)
-python3 screen.py
+python3 old/screen.py
