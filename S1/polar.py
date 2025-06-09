@@ -8,6 +8,8 @@ import numpy as np
 import neurokit2 as nk
 import pandas as pd
 import warnings
+import os
+from S1 import clock
 
 warnings.filterwarnings("ignore")
 
@@ -35,6 +37,27 @@ class Polar:
         self.loop_ready.wait()  # Wait until the loop is running
         # Schedule the main coroutine safely
         asyncio.run_coroutine_threadsafe(self.main(), self.loop)
+
+        self.clock = clock.Clock()
+
+    def _atomic_write(self, filename, content):
+        """Atomic append with fsync for reliability"""
+        with open(filename, "a") as f:
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())  # Force write to disk
+
+    def _write_ecg_entry(self, samples):
+        string_date, string_time = self.clock.get_date_time()
+        timestamp = string_date + " " + string_time
+        data_line = f"{timestamp}, " + ", ".join(map(str, samples)) + "\n"
+        self._atomic_write("ecg_data.txt", data_line)
+
+    def _write_hr_entry(self, heart_rate):
+        string_date, string_time = self.clock.get_date_time()
+        timestamp = string_date + " " + string_time
+        data_line = f"{timestamp}, {heart_rate}\n"
+        self._atomic_write("heart_rate.txt", data_line)
 
     def _run_loop(self):
         asyncio.set_event_loop(self.loop)
@@ -105,10 +128,12 @@ class Polar:
     def heartrate_callback(self, data: HRData):
         print(f"Heart Rate: {int(data.heartrate)}")
         self.CUR_HEART_RATE = int(data.heartrate)
+        self._write_hr_entry(int(data.heartrate))
 
     def data_callback(self, data: Union[ECGData, ACCData]):
         if isinstance(data, ECGData):
             self.ecg_data_list.extend(data.data)
+            self._write_ecg_entry(data.data)  # <-- ADD THIS LINE
 
             if len(self.ecg_data_list) > 2500:
                 samples_in_minute = 60 * 130
