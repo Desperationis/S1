@@ -25,7 +25,7 @@ from polar_python import (
 console = Console()
 
 class Polar:
-    def __init__(self):
+    def __init__(self, ecg_log, heart_log):
         self.ecg_data_list = []
         self.CUR_HEART_RATE = 0
         self.CUR_HRV = 0
@@ -40,6 +40,9 @@ class Polar:
 
         self.clock = clock.Clock()
 
+        self.ecg_log = ecg_log
+        self.heart_log = heart_log
+
     def _atomic_write(self, filename, content):
         """Atomic append with fsync for reliability"""
         with open(filename, "a") as f:
@@ -51,13 +54,13 @@ class Polar:
         string_date, string_time = self.clock.get_date_time()
         timestamp = string_date + " " + string_time
         data_line = f"{timestamp}, " + ", ".join(map(str, samples)) + "\n"
-        self._atomic_write("ecg_data.txt", data_line)
+        self._atomic_write(self.ecg_log, data_line)
 
     def _write_hr_entry(self, heart_rate):
         string_date, string_time = self.clock.get_date_time()
         timestamp = string_date + " " + string_time
         data_line = f"{timestamp}, {heart_rate}\n"
-        self._atomic_write("heart_rate.txt", data_line)
+        self._atomic_write(self.heart_log, data_line)
 
     def _run_loop(self):
         asyncio.set_event_loop(self.loop)
@@ -82,18 +85,14 @@ class Polar:
 
         inspect(device)
 
-        print("f")
         async with PolarDevice(device) as polar_device:
-            print("a")
             available_features = await polar_device.available_features()
             inspect(available_features)
 
             for feature in available_features:
-                print("waiting on response...")
                 settings = await polar_device.request_stream_settings(feature)
                 console.print(f"[bold blue]Settings for {feature}:[/bold blue] {settings}")
 
-            print("g")
             ecg_settings = MeasurementSettings(
                 measurement_type="ECG",
                 settings=[
@@ -112,17 +111,13 @@ class Polar:
             )
 
             polar_device.set_callback(self.data_callback, self.heartrate_callback)
-            print("t")
 
             await polar_device.start_stream(ecg_settings)
             await polar_device.start_stream(acc_settings)
 
-            print("g")
             await polar_device.start_heartrate_stream()
 
-            print("h")
             while not self.exit_event.is_set():
-                print("waiting")
                 await asyncio.sleep(1)
 
     def heartrate_callback(self, data: HRData):
@@ -188,9 +183,4 @@ class Polar:
                     print("undefined")
             else:
                 print("Receiving some more ECG data before starting...")
-
-# Example usage:
-# polar = Polar()
-# ... do other things ...
-# polar.close()  # When you want to stop everything
 
