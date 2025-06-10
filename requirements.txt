@@ -5,3 +5,7 @@ pillow==11.2.1
 adafruit-circuitpython-rgb-display==3.14.0
 rich==14.0.0
 polar-python==0.0.4
+bleak==0.20.2
+matplotlib==3.6.3
+pandas==1.5.3
+numpy==1.24.2
