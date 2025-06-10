@@ -193,5 +193,4 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-ecg_data.txt
-heart_rate.txt
+*.txt
