@@ -62,10 +62,18 @@ try:
         frame = Image.new("RGB", lcd.get_width_height())
         draw = ImageDraw.Draw(frame)
 
+        if not hasattr(page_1, "date"):
+            page_1.date = "n/a"
+            page_1.timestamp = "n/a"
+        if CURRENT_STATE == KNOB_CHANGES_PAGES:
+            string_date, string_time = clock.get_date_time()
+            page_1.date = string_date
+            page_1.timestamp = string_time
+
         draw_text(draw, "Select Data Type", (0, -40), (255,0,0))
-        string_date, string_time = clock.get_date_time()
-        draw_text(draw, string_date, (0, -20), (255,255,255))
-        draw_text(draw, string_time, (0, -0), (255,255,255))
+        draw_text(draw, page_1.date, (0, -20), (255,255,255))
+        draw_text(draw, page_1.timestamp, (0, -0), (255,255,255))
+
 
         FEELINGS = ["relaxed", "stressed", "craving"]
         if not hasattr(page_1, "feeling"):
@@ -74,7 +82,7 @@ try:
             page_1.feeling = FEELINGS[knob.get_position()]
         draw_text(draw, f"feeling: {page_1.feeling}", (0, 20), (255,255,255))
 
-        TIME = ["10 seconds", "30 seconds", "1 min"]
+        TIME = ["10s", "30s", "60s"]
         if not hasattr(page_1, "time"):
             page_1.time = "n/a"
         if CURRENT_STATE == KNOB_CHANGES_TIME:
@@ -84,6 +92,12 @@ try:
         if CURRENT_STATE == KNOB_COMMIT_CHANGES:
             print(f"Final feeling: {page_1.feeling}")
             print(f"Final time: {page_1.time}")
+            with open("/home/adhoc/markers.txt", "a") as f:
+                timestamp = page_1.date + " " + page_1.timestamp
+                data_line = f"{timestamp}, " + f"{page_1.feeling}, {page_1.time}" + "\n"
+                f.write(data_line)
+                f.flush()
+                os.fsync(f.fileno())  # Force write to disk
             page_1.feeling = "n/a"
             page_1.time = "n/a"
 
@@ -93,9 +107,9 @@ try:
 
 
     KNOB_CHANGES_PAGES = 0
-    KNOB_CHANGES_FEELING = 1
-    KNOB_CHANGES_TIME = 2
-    KNOB_COMMIT_CHANGES = 3
+    KNOB_CHANGES_FEELING = 2
+    KNOB_CHANGES_TIME = 3
+    KNOB_COMMIT_CHANGES = 4
     CURRENT_STATE = 0
     NEXT_STATE = 0
 
