@@ -119,8 +119,8 @@ def plot_ecg_signal(
 # Example usage:
 if __name__ == "__main__":
     file_path = "ecg_log.txt"
-    start_time = "06/09/2025 07:40:50 PM"
-    end_time = "06/09/2025 08:25:58 PM"
+    start_time = "06/09/2025 11:13:10 PM"
+    end_time = "06/09/2025 11:13:50 PM"
 
     # Step 1: Rebuild the signal
     ecg_signal, seg_starts, seg_times = rebuild_ecg_signal(file_path, start_time, end_time)
