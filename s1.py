@@ -31,6 +31,15 @@ try:
         y = 128/2 - text_height/2 + offset_center[1]
         draw.text((x, y), string, font=font, fill=color)
 
+    def title():
+        frame = Image.new("RGB", lcd.get_width_height())
+        draw = ImageDraw.Draw(frame)
+
+        draw_text(draw, "S1", (0, -10), (255,255,255))
+        draw_text(draw, "Diego Contreras", (0, 10), (255,255,255))
+
+        lcd.display_image(frame)
+
     def page_0():
         frame = Image.new("RGB", lcd.get_width_height())
         draw = ImageDraw.Draw(frame)
@@ -45,19 +54,88 @@ try:
         draw_text(draw, f"ecg: {size_of_file(ecg_log_path)}", (0, 20), (255,255,255))
         draw_text(draw, f"rhr: {size_of_file(heart_log_path)}", (0, 40), (255,255,255))
 
+
+
         lcd.display_image(frame)
 
     def page_1():
         frame = Image.new("RGB", lcd.get_width_height())
         draw = ImageDraw.Draw(frame)
-        draw_text(draw, f"bleh", (0, 0), (255,255,255))
+
+        draw_text(draw, "Select Data Type", (0, -40), (255,0,0))
+        string_date, string_time = clock.get_date_time()
+        draw_text(draw, string_date, (0, -20), (255,255,255))
+        draw_text(draw, string_time, (0, -0), (255,255,255))
+
+        FEELINGS = ["relaxed", "stressed", "craving"]
+        if not hasattr(page_1, "feeling"):
+            page_1.feeling = "n/a"
+        if CURRENT_STATE == KNOB_CHANGES_FEELING:
+            page_1.feeling = FEELINGS[knob.get_position()]
+        draw_text(draw, f"feeling: {page_1.feeling}", (0, 20), (255,255,255))
+
+        TIME = ["10 seconds", "30 seconds", "1 min"]
+        if not hasattr(page_1, "time"):
+            page_1.time = "n/a"
+        if CURRENT_STATE == KNOB_CHANGES_TIME:
+            page_1.time = TIME[knob.get_position()]
+        draw_text(draw, f"time: {page_1.time}", (0, 40), (255,255,255))
+
+        if CURRENT_STATE == KNOB_COMMIT_CHANGES:
+            print(f"Final feeling: {page_1.feeling}")
+            print(f"Final time: {page_1.time}")
+            page_1.feeling = "n/a"
+            page_1.time = "n/a"
 
 
         lcd.display_image(frame)
 
 
+
+    KNOB_CHANGES_PAGES = 0
+    KNOB_CHANGES_FEELING = 1
+    KNOB_CHANGES_TIME = 2
+    KNOB_COMMIT_CHANGES = 3
+    CURRENT_STATE = 0
+    NEXT_STATE = 0
+
+    title()
+    time.sleep(5)
+
+    menu_enabled = False
+    current_page = 0
     while True:
-        if knob.get_position() == 1:
+        if CURRENT_STATE == KNOB_CHANGES_PAGES:
+            if knob.get_position() == 1:
+                current_page = 1
+            else:
+                current_page = 0
+
+        pressed = knob.is_pressed_instant()
+
+        if CURRENT_STATE == KNOB_COMMIT_CHANGES:
+            NEXT_STATE = KNOB_CHANGES_PAGES
+            knob.set_min_max(0, 1) # This brings us back to the home page
+            print("ENTERERD PAGES")
+
+        if current_page == 1 and pressed:
+            if CURRENT_STATE == KNOB_CHANGES_TIME:
+                NEXT_STATE = KNOB_COMMIT_CHANGES
+
+            if CURRENT_STATE == KNOB_CHANGES_FEELING:
+                NEXT_STATE = KNOB_CHANGES_TIME
+                knob.set_min_max(0, 2)
+
+            if CURRENT_STATE == KNOB_CHANGES_PAGES:
+                NEXT_STATE = KNOB_CHANGES_FEELING
+                knob.set_min_max(0, 2)
+
+        CURRENT_STATE = NEXT_STATE
+
+
+
+
+        if current_page == 1:
             page_1()
         else:
             page_0()

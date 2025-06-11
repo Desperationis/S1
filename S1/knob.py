@@ -13,6 +13,11 @@ class Knob:
         self.encoder.when_rotated_clockwise = self.when_rotated_clockwise
         self.encoder.when_rotated_counter_clockwise = self.when_rotated_counter_clockwise
 
+    def set_min_max(self, minimum, maximum):
+        self.value = 0
+        self.minimum = minimum
+        self.maximum = maximum
+
     def when_rotated_clockwise(self):
         self.value = min(self.maximum, self.value + 1)
 
